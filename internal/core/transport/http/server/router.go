@@ -1,4 +1,4 @@
-package httpserver
+package corehttpserver
 
 import (
 	"fmt"
@@ -28,6 +28,6 @@ func NewApiVersionRouter(apiVersion ApiVersion) *ApiVersionRouter {
 func (ar *ApiVersionRouter) RegisterRoutes(routes ...Route) {
 	for _, route := range routes {
 		pattern := fmt.Sprintf("%s %s", route.Method, route.Path)
-		ar.Handle(pattern, route.Handler)
+		ar.Handle(pattern, route.WithMiddleware())
 	}
 }

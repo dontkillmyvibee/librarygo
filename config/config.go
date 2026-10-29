@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 	"library/internal/core/logger"
-	"library/internal/core/transport/http/server"
+	httpserver "library/internal/core/transport/http/server"
 
 	"github.com/caarlos0/env/v11"
 )
