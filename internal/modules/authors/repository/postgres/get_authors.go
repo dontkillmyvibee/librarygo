@@ -25,7 +25,6 @@ func (r *AuthorsRepository) GetAuthors(
 		},
 	)
 	if err != nil {
-		defer tx.Rollback(ctx)
 		return nil, 0, fmt.Errorf("begin authors transaction: %w", err)
 	}
 	defer func() {
