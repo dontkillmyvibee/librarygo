@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	authorsdomain "library/internal/modules/authors/domain"
-	"time"
 	"uuid"
 )
 
@@ -26,7 +25,7 @@ func (s *AuthorsService) Patch(
 		return s.GetAuthor(ctx, id)
 	}
 
-	author, err := s.authorsRepository.Patch(ctx, id, input, time.Now().UTC())
+	author, err := s.authorsRepository.Patch(ctx, id, input)
 	if err != nil {
 		return authorsdomain.Author{}, fmt.Errorf(
 			"patch author: %w",

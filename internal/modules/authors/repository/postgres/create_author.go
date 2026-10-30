@@ -4,36 +4,46 @@ import (
 	"context"
 	"fmt"
 	authorsdomain "library/internal/modules/authors/domain"
+	authorspostgresmodels "library/internal/modules/authors/repository/postgres/models"
 )
 
 func (r *AuthorsRepository) Create(
 	ctx context.Context,
 	author authorsdomain.Author,
-) error {
+) (authorsdomain.Author, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.pool.Timeout)
 	defer cancel()
 
 	const query = `
 		INSERT INTO library.authors (
-			id, first_name, last_name, middle_name,
-			created_at, updated_at
+			first_name, last_name, middle_name
 		)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		VALUES ($1, $2, $3)
+		RETURNING id, first_name, last_name, middle_name, created_at, updated_at
 	`
 
-	_, err := r.pool.Exec(
+	var model authorspostgresmodels.Author
+
+	err := r.pool.QueryRow(
 		ctx,
 		query,
-		author.ID.String(),
 		author.FirstName,
 		author.LastName,
 		author.MiddleName,
-		author.CreatedAt,
-		author.UpdatedAt,
+	).Scan(
+		&model.ID,
+		&model.FirstName,
+		&model.LastName,
+		&model.MiddleName,
+		&model.CreatedAt,
+		&model.UpdatedAt,
 	)
 	if err != nil {
-		return fmt.Errorf("insert author: %w", err)
+		return authorsdomain.Author{}, fmt.Errorf(
+			"insert author: %w",
+			err,
+		)
 	}
 
-	return nil
+	return model.ToDomain(), nil
 }

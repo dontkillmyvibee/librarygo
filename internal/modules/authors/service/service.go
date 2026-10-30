@@ -3,7 +3,6 @@ package authorsservice
 import (
 	"context"
 	authorsdomain "library/internal/modules/authors/domain"
-	"time"
 	"uuid"
 )
 
@@ -15,7 +14,7 @@ type AuthorsRepository interface {
 	Create(
 		ctx context.Context,
 		author authorsdomain.Author,
-	) error
+	) (authorsdomain.Author, error)
 	GetAuthor(
 		ctx context.Context,
 		id uuid.UUID,
@@ -32,7 +31,6 @@ type AuthorsRepository interface {
 		ctx context.Context,
 		id uuid.UUID,
 		input PatchAuthorInput,
-		updatedAt time.Time,
 	) (authorsdomain.Author, error)
 }
 

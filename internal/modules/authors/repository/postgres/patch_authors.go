@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 	"uuid"
 
 	coreerrors "library/internal/core/errors"
@@ -19,7 +18,6 @@ func (r *AuthorsRepository) Patch(
 	ctx context.Context,
 	id uuid.UUID,
 	input authorsservice.PatchAuthorInput,
-	updatedAt time.Time,
 ) (authorsdomain.Author, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.pool.Timeout)
 	defer cancel()
@@ -32,7 +30,7 @@ func (r *AuthorsRepository) Patch(
 		        WHEN $4 THEN $5
 		        ELSE middle_name
 		    END,
-		    updated_at = $6
+		    updated_at = now()
 		WHERE id = $1
 		RETURNING first_name, last_name, middle_name,
 		          created_at, updated_at
@@ -50,7 +48,6 @@ func (r *AuthorsRepository) Patch(
 		input.LastName,
 		input.MiddleNameSet,
 		input.MiddleName,
-		updatedAt,
 	).Scan(
 		&model.FirstName,
 		&model.LastName,
