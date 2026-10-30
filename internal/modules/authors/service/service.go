@@ -12,10 +12,22 @@ type AuthorsService struct {
 }
 
 type AuthorsRepository interface {
-	Create(ctx context.Context, author authorsdomain.Author) error
-	GetAuthor(ctx context.Context, id uuid.UUID) (authorsdomain.Author, error)
-	GetAuthors(ctx context.Context) ([]authorsdomain.Author, error)
-	Delete(ctx context.Context, id uuid.UUID) error
+	Create(
+		ctx context.Context,
+		author authorsdomain.Author,
+	) error
+	GetAuthor(
+		ctx context.Context,
+		id uuid.UUID,
+	) (authorsdomain.Author, error)
+	GetAuthors(
+		ctx context.Context,
+		input GetAuthorsInput,
+	) ([]authorsdomain.Author, int, error)
+	Delete(
+		ctx context.Context,
+		id uuid.UUID,
+	) error
 	Patch(
 		ctx context.Context,
 		id uuid.UUID,

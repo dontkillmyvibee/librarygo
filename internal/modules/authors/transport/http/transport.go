@@ -13,10 +13,22 @@ type AuthorsHTTPHandler struct {
 }
 
 type AuthorsService interface {
-	Create(ctx context.Context, input authorsservice.CreateAuthorInput) (authorsdomain.Author, error)
-	GetAuthor(ctx context.Context, id uuid.UUID) (authorsdomain.Author, error)
-	GetAuthors(ctx context.Context) (authorsservice.GetAuthorsOutput, error)
-	Delete(ctx context.Context, id uuid.UUID) error
+	Create(
+		ctx context.Context,
+		input authorsservice.CreateAuthorInput,
+	) (authorsdomain.Author, error)
+	GetAuthor(
+		ctx context.Context,
+		id uuid.UUID,
+	) (authorsdomain.Author, error)
+	GetAuthors(
+		ctx context.Context,
+		input authorsservice.GetAuthorsInput,
+	) (authorsservice.GetAuthorsOutput, error)
+	Delete(
+		ctx context.Context,
+		id uuid.UUID,
+	) error
 	Patch(
 		ctx context.Context,
 		id uuid.UUID,
@@ -33,11 +45,6 @@ func NewAuthorsHTTPHandler(authorsService AuthorsService) *AuthorsHTTPHandler {
 func (h *AuthorsHTTPHandler) Routes() []httpserver.Route {
 	return []httpserver.Route{
 		{
-			Method:  httpserver.MethodPost,
-			Path:    "/authors",
-			Handler: h.CreateAuthor,
-		},
-		{
 			Method:  httpserver.MethodGet,
 			Path:    "/authors/{id}",
 			Handler: h.GetAuthor,
@@ -46,6 +53,11 @@ func (h *AuthorsHTTPHandler) Routes() []httpserver.Route {
 			Method:  httpserver.MethodGet,
 			Path:    "/authors",
 			Handler: h.GetAuthors,
+		},
+		{
+			Method:  httpserver.MethodPost,
+			Path:    "/authors",
+			Handler: h.CreateAuthor,
 		},
 		{
 			Method:  httpserver.MethodDelete,

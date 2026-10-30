@@ -86,8 +86,8 @@ func (p *PatchAuthorRequest) Validate() error {
 	return nil
 }
 
-func AuthorFromDomain[T GetAuthorResponse | CreateAuthorResponse](author authorsdomain.Author) *T {
-	return &T{
+func AuthorFromDomain[T GetAuthorResponse | CreateAuthorResponse](author authorsdomain.Author) T {
+	return T{
 		ID:         author.ID,
 		FirstName:  author.FirstName,
 		LastName:   author.LastName,
@@ -100,7 +100,7 @@ func AuthorsFromService(result authorsservice.GetAuthorsOutput) GetAuthorsRespon
 
 	for _, author := range result.Authors {
 		items = append(items,
-			*AuthorFromDomain[GetAuthorResponse](author),
+			AuthorFromDomain[GetAuthorResponse](author),
 		)
 	}
 
