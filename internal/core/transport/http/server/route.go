@@ -1,6 +1,9 @@
-package httpserver
+package corehttpserver
 
-import "net/http"
+import (
+	"library/internal/core/transport/http/middleware"
+	"net/http"
+)
 
 type HTTPMethod string
 
@@ -17,19 +20,15 @@ const (
 )
 
 type Route struct {
-	Method  HTTPMethod
-	Path    string
-	Handler http.HandlerFunc
+	Method     HTTPMethod
+	Path       string
+	Handler    http.HandlerFunc
+	Middleware []middleware.Middleware
 }
 
-func NewRoute(
-	method HTTPMethod,
-	path string,
-	handler http.HandlerFunc,
-) *Route {
-	return &Route{
-		Method:  method,
-		Path:    path,
-		Handler: handler,
-	}
+func (r *Route) WithMiddleware() http.Handler {
+	return middleware.ChainMiddleware(
+		r.Handler,
+		r.Middleware...,
+	)
 }

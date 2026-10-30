@@ -3,19 +3,21 @@ package config
 import (
 	"fmt"
 	"library/internal/core/logger"
-	"library/internal/core/transport/http/server"
+	corepostgres "library/internal/core/repository/postgres"
+	httpserver "library/internal/core/transport/http/server"
 
-	"github.com/caarlos0/env/v11"
+	"github.com/kelseyhightower/envconfig"
 )
 
 type Config struct {
-	HTTP   httpserver.Config
-	Logger logger.Config
+	HTTP     httpserver.Config
+	Logger   logger.Config
+	Postgres corepostgres.Config
 }
 
 func NewConfig() (*Config, error) {
 	var cfg Config
-	if err := env.Parse(&cfg); err != nil {
+	if err := envconfig.Process("", &cfg); err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
 

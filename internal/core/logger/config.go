@@ -1,5 +1,5 @@
 package logger
 
 type Config struct {
-	LogLevel string `env:"LOG_LEVEL" envDefault:"INFO"`
+	LogLevel string `envconfig:"LOG_LEVEL" default:"INFO"`
 }

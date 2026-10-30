@@ -1,28 +1,31 @@
-package httpserver
+package corehttpserver
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	"library/internal/core/logger"
+	"library/internal/core/transport/http/middleware"
 	"net/http"
 )
 
 type Server struct {
-	mux    *http.ServeMux
-	config Config
-	logger *logger.Logger
+	mux        *http.ServeMux
+	config     Config
+	logger     *logger.Logger
+	middleware []middleware.Middleware
 }
 
-func NewServer(cfg Config, log *logger.Logger) *Server {
+func NewServer(cfg Config, log *logger.Logger, middleware ...middleware.Middleware) *Server {
 	return &Server{
-		mux:    http.NewServeMux(),
-		config: cfg,
-		logger: log,
+		mux:        http.NewServeMux(),
+		config:     cfg,
+		logger:     log,
+		middleware: middleware,
 	}
 }
 
-func (s *Server) RegisterAPIRouters(routers ...ApiVersionRouter) {
+func (s *Server) RegisterAPIRouters(routers ...*ApiVersionRouter) {
 	for _, router := range routers {
 		prefix := "/api/" + string(router.apiVersion)
 		s.mux.Handle(
@@ -32,10 +35,21 @@ func (s *Server) RegisterAPIRouters(routers ...ApiVersionRouter) {
 	}
 }
 
+func (s *Server) RegisterRoutes(routes ...Route) {
+	for _, route := range routes {
+		path := string(route.Method) + " " + route.Path
+		handler := route.WithMiddleware()
+
+		s.mux.Handle(path, handler)
+	}
+}
+
 func (s *Server) Run(ctx context.Context) error {
+	mux := middleware.ChainMiddleware(s.mux, s.middleware...)
+
 	server := &http.Server{
 		Addr:              ":" + s.config.Port,
-		Handler:           s.mux,
+		Handler:           mux,
 		ReadTimeout:       s.config.ReadTimeout,
 		ReadHeaderTimeout: s.config.ReadHeaderTimeout,
 		WriteTimeout:      s.config.WriteTimeout,

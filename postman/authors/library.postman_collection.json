@@ -1,0 +1,2309 @@
+{
+  "info": {
+    "name": "Library API — Authors",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Коллекция для фактически реализованного API библиотеки.\n\nЗапуск: импортируйте этот JSON в Postman, запустите приложение с доступной БД и применёнными миграциями, при необходимости измените base_url. По умолчанию http://localhost:8080/api/v1. Авторизация в текущем API не предусмотрена.\n\nПапку «01 — CRUD-сценарий» запускайте целиком по порядку через Collection Runner: создание → чтение → список → изменение → очистка отчества → пустой PATCH → удаление → проверки 404. ID сохраняется автоматически в переменную коллекции author_id. Не переопределяйте author_id в environment: запросы используют переменную коллекции. Сценарий создаёт и удаляет одну запись; при прерывании запись может остаться в БД. Чтобы работать с существующим автором вручную, задайте author_id и выполняйте нужные запросы отдельно.\n\nПапки пагинации и ошибок можно запускать независимо. Все примеры ответов иллюстративные, получены из контрактов кода, а не с живого сервера. Тесты запускаются при отправке запросов; генерация коллекции не обращается к API.\n\nТела POST/PATCH: один JSON-объект; неизвестные поля запрещены. Ошибки API имеют вид {\"error\": \"...\", \"message\": \"...\"}. При сбое БД возможен HTTP 500. Маршруты: GET/POST /authors и GET/PATCH/DELETE /authors/{id}."
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080/api/v1",
+      "type": "string",
+      "description": "Базовый URL с версией API, без завершающего /."
+    },
+    {
+      "key": "author_id",
+      "value": "",
+      "type": "string",
+      "description": "Автоматически заполняется успешным запросом создания; для ручных запросов можно указать UUID."
+    },
+    {
+      "key": "limit",
+      "value": "20",
+      "type": "string",
+      "description": "Размер страницы 1–100."
+    },
+    {
+      "key": "offset",
+      "value": "0",
+      "type": "string",
+      "description": "Смещение ≥ 0."
+    }
+  ],
+  "item": [
+    {
+      "name": "01 — CRUD-сценарий",
+      "description": "Выполняйте по порядку. Создаёт одну запись и удаляет её в конце.",
+      "item": [
+        {
+          "name": "01 — Создать автора",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/authors",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "authors"
+              ]
+            },
+            "description": "Создаёт автора для этого сценария. При успешном ответе сохраняет id в переменную коллекции author_id. Имена обрезаются по краям; first_name и last_name обязательны, максимум 100 символов, управляющие символы запрещены. middle_name необязателен: null, отсутствие или пустая строка означают отсутствие отчества.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Лев\",\n  \"last_name\": \"Толстой\",\n  \"middle_name\": \"Николаевич\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"author_id\", \"\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", function () { pm.response.to.have.status(201); });",
+                  "pm.test(\"JSON Content-Type\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"); });",
+                  "pm.test(\"Структура автора\", function () {",
+                  "    const author = pm.response.json();",
+                  "    pm.expect(author.id).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);",
+                  "    pm.expect(author.first_name).to.be.a(\"string\");",
+                  "    pm.expect(author.last_name).to.be.a(\"string\");",
+                  "    if (Object.prototype.hasOwnProperty.call(author, \"middle_name\")) {",
+                  "        pm.expect(author.middle_name).to.be.a(\"string\");",
+                  "    }",
+                  "});",
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set(\"author_id\", pm.response.json().id);",
+                  "}",
+                  "pm.test(\"Данные созданного автора\", function () {",
+                  "    const author = pm.response.json();",
+                  "    pm.expect(author.first_name).to.equal(\"Лев\");",
+                  "    pm.expect(author.last_name).to.equal(\"Толстой\");",
+                  "    pm.expect(author.middle_name).to.equal(\"Николаевич\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/authors",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "authors"
+                  ]
+                },
+                "description": "Создаёт автора для этого сценария. При успешном ответе сохраняет id в переменную коллекции author_id. Имена обрезаются по краям; first_name и last_name обязательны, максимум 100 символов, управляющие символы запрещены. middle_name необязателен: null, отсутствие или пустая строка означают отсутствие отчества.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"first_name\": \"Лев\",\n  \"last_name\": \"Толстой\",\n  \"middle_name\": \"Николаевич\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": \"a3d7e5f1-2c84-4ab9-9d60-5f18b7e24c03\",\n  \"first_name\": \"Лев\",\n  \"last_name\": \"Толстой\",\n  \"middle_name\": \"Николаевич\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "02 — Получить автора по ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/authors/{{author_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "authors",
+                "{{author_id}}"
+              ]
+            },
+            "description": "Требует author_id из запроса создания. Возвращает id, first_name, last_name и middle_name, если отчество задано. Временные метки в HTTP-ответ не включены."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"JSON Content-Type\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"); });",
+                  "pm.test(\"Структура автора\", function () {",
+                  "    const author = pm.response.json();",
+                  "    pm.expect(author.id).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);",
+                  "    pm.expect(author.first_name).to.be.a(\"string\");",
+                  "    pm.expect(author.last_name).to.be.a(\"string\");",
+                  "    if (Object.prototype.hasOwnProperty.call(author, \"middle_name\")) {",
+                  "        pm.expect(author.middle_name).to.be.a(\"string\");",
+                  "    }",
+                  "});",
+                  "pm.test(\"ID совпадает\", function () { pm.expect(pm.response.json().id).to.equal(pm.collectionVariables.get(\"author_id\")); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/authors/{{author_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "authors",
+                    "{{author_id}}"
+                  ]
+                },
+                "description": "Требует author_id из запроса создания. Возвращает id, first_name, last_name и middle_name, если отчество задано. Временные метки в HTTP-ответ не включены."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": \"a3d7e5f1-2c84-4ab9-9d60-5f18b7e24c03\",\n  \"first_name\": \"Лев\",\n  \"last_name\": \"Толстой\",\n  \"middle_name\": \"Николаевич\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "03 — Список авторов с пагинацией",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/authors?limit={{limit}}&offset={{offset}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "authors"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "{{limit}}",
+                  "description": "Количество записей: 1–100, по умолчанию 20."
+                },
+                {
+                  "key": "offset",
+                  "value": "{{offset}}",
+                  "description": "Количество пропущенных записей: ≥ 0, по умолчанию 0."
+                }
+              ]
+            },
+            "description": "Сортировка по created_at, затем id. total — общее количество авторов во всей таблице, независимо от limit и offset. Пустой список возвращается как []."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"JSON Content-Type\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"); });",
+                  "pm.test(\"Список авторов и общее количество\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.authors).to.be.an(\"array\");",
+                  "    pm.expect(data.total).to.be.a(\"number\");",
+                  "    pm.expect(Number.isInteger(data.total)).to.equal(true);",
+                  "    pm.expect(data.total).to.be.at.least(data.authors.length);",
+                  "    data.authors.forEach(function (author) {",
+                  "        pm.expect(author.id).to.be.a(\"string\");",
+                  "        pm.expect(author.first_name).to.be.a(\"string\");",
+                  "        pm.expect(author.last_name).to.be.a(\"string\");",
+                  "    });",
+                  "});",
+                  "pm.test(\"Размер страницы\", function () {",
+                  "    pm.expect(pm.response.json().authors.length).to.be.at.most(Number(pm.variables.get(\"limit\")));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/authors?limit={{limit}}&offset={{offset}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "authors"
+                  ],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "{{limit}}",
+                      "description": "Количество записей: 1–100, по умолчанию 20."
+                    },
+                    {
+                      "key": "offset",
+                      "value": "{{offset}}",
+                      "description": "Количество пропущенных записей: ≥ 0, по умолчанию 0."
+                    }
+                  ]
+                },
+                "description": "Сортировка по created_at, затем id. total — общее количество авторов во всей таблице, независимо от limit и offset. Пустой список возвращается как []."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"authors\": [\n    {\n      \"id\": \"a3d7e5f1-2c84-4ab9-9d60-5f18b7e24c03\",\n      \"first_name\": \"Лев\",\n      \"last_name\": \"Толстой\",\n      \"middle_name\": \"Николаевич\"\n    }\n  ],\n  \"total\": 1\n}"
+            }
+          ]
+        },
+        {
+          "name": "04 — Изменить имя",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/authors/{{author_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "authors",
+                "{{author_id}}"
+              ]
+            },
+            "description": "Обновляет только переданные поля. first_name и last_name не принимают null. Пропущенные поля сохраняются. Пустые строки и строки из пробелов игнорируются. Максимум 100 символов, управляющие символы запрещены.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Алексей\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"JSON Content-Type\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"); });",
+                  "pm.test(\"Структура автора\", function () {",
+                  "    const author = pm.response.json();",
+                  "    pm.expect(author.id).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);",
+                  "    pm.expect(author.first_name).to.be.a(\"string\");",
+                  "    pm.expect(author.last_name).to.be.a(\"string\");",
+                  "    if (Object.prototype.hasOwnProperty.call(author, \"middle_name\")) {",
+                  "        pm.expect(author.middle_name).to.be.a(\"string\");",
+                  "    }",
+                  "});",
+                  "pm.test(\"Имя обновлено, фамилия сохранена\", function () { const a = pm.response.json(); pm.expect(a.first_name).to.equal(\"Алексей\"); pm.expect(a.last_name).to.equal(\"Толстой\"); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/authors/{{author_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "authors",
+                    "{{author_id}}"
+                  ]
+                },
+                "description": "Обновляет только переданные поля. first_name и last_name не принимают null. Пропущенные поля сохраняются. Пустые строки и строки из пробелов игнорируются. Максимум 100 символов, управляющие символы запрещены.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"first_name\": \"Алексей\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": \"a3d7e5f1-2c84-4ab9-9d60-5f18b7e24c03\",\n  \"first_name\": \"Алексей\",\n  \"last_name\": \"Толстой\",\n  \"middle_name\": \"Николаевич\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "05 — Удалить отчество",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/authors/{{author_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "authors",
+                "{{author_id}}"
+              ]
+            },
+            "description": "middle_name: null очищает отчество. Поле middle_name после этого отсутствует в ответе (omitempty). Пустая строка в PATCH не очищает отчество.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"middle_name\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"JSON Content-Type\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"); });",
+                  "pm.test(\"Структура автора\", function () {",
+                  "    const author = pm.response.json();",
+                  "    pm.expect(author.id).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);",
+                  "    pm.expect(author.first_name).to.be.a(\"string\");",
+                  "    pm.expect(author.last_name).to.be.a(\"string\");",
+                  "    if (Object.prototype.hasOwnProperty.call(author, \"middle_name\")) {",
+                  "        pm.expect(author.middle_name).to.be.a(\"string\");",
+                  "    }",
+                  "});",
+                  "pm.test(\"Отчество отсутствует\", function () { pm.expect(pm.response.json()).not.to.have.property(\"middle_name\"); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/authors/{{author_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "authors",
+                    "{{author_id}}"
+                  ]
+                },
+                "description": "middle_name: null очищает отчество. Поле middle_name после этого отсутствует в ответе (omitempty). Пустая строка в PATCH не очищает отчество.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"middle_name\": null\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": \"a3d7e5f1-2c84-4ab9-9d60-5f18b7e24c03\",\n  \"first_name\": \"Алексей\",\n  \"last_name\": \"Толстой\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "06 — PATCH без изменений",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/authors/{{author_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "authors",
+                "{{author_id}}"
+              ]
+            },
+            "description": "Пустой объект возвращает текущее состояние автора без обновления записи.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"JSON Content-Type\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"); });",
+                  "pm.test(\"Структура автора\", function () {",
+                  "    const author = pm.response.json();",
+                  "    pm.expect(author.id).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);",
+                  "    pm.expect(author.first_name).to.be.a(\"string\");",
+                  "    pm.expect(author.last_name).to.be.a(\"string\");",
+                  "    if (Object.prototype.hasOwnProperty.call(author, \"middle_name\")) {",
+                  "        pm.expect(author.middle_name).to.be.a(\"string\");",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/authors/{{author_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "authors",
+                    "{{author_id}}"
+                  ]
+                },
+                "description": "Пустой объект возвращает текущее состояние автора без обновления записи.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": \"a3d7e5f1-2c84-4ab9-9d60-5f18b7e24c03\",\n  \"first_name\": \"Алексей\",\n  \"last_name\": \"Толстой\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "07 — Удалить созданного автора",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/authors/{{author_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "authors",
+                "{{author_id}}"
+              ]
+            },
+            "description": "Удаляет автора из шага 01. Для ручного выполнения укажите author_id. При полном запуске папки удаляется только созданная в ней запись."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 204\", function () { pm.response.to.have.status(204); });",
+                  "pm.test(\"Пустое тело ответа\", function () { pm.expect(pm.response.text()).to.equal(\"\"); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "204 No Content",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/authors/{{author_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "authors",
+                    "{{author_id}}"
+                  ]
+                },
+                "description": "Удаляет автора из шага 01. Для ручного выполнения укажите author_id. При полном запуске папки удаляется только созданная в ней запись."
+              },
+              "status": "No Content",
+              "code": 204,
+              "_postman_previewlanguage": "text",
+              "header": [],
+              "cookie": [],
+              "body": ""
+            }
+          ]
+        },
+        {
+          "name": "08 — Проверить удаление",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/authors/{{author_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "authors",
+                "{{author_id}}"
+              ]
+            },
+            "description": "Проверяет отсутствие автора после удаления."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"JSON Content-Type\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"); });",
+                  "pm.test(\"Ошибка API\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.error).to.equal(\"not found\");",
+                  "    pm.expect(data.message).to.equal(\"failed to get author\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "404 Not Found",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/authors/{{author_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "authors",
+                    "{{author_id}}"
+                  ]
+                },
+                "description": "Проверяет отсутствие автора после удаления."
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"not found\",\n  \"message\": \"failed to get author\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "09 — Повторное удаление",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/authors/{{author_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "authors",
+                "{{author_id}}"
+              ]
+            },
+            "description": "Повторное удаление отсутствующего автора возвращает 404."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"JSON Content-Type\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"); });",
+                  "pm.test(\"Ошибка API\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.error).to.equal(\"not found\");",
+                  "    pm.expect(data.message).to.equal(\"failed to delete author\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "404 Not Found",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/authors/{{author_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "authors",
+                    "{{author_id}}"
+                  ]
+                },
+                "description": "Повторное удаление отсутствующего автора возвращает 404."
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"not found\",\n  \"message\": \"failed to delete author\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 — Пагинация",
+      "item": [
+        {
+          "name": "Без параметров — limit=20, offset=0",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/authors",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "authors"
+              ]
+            },
+            "description": "Параметры по умолчанию: limit=20, offset=0."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"JSON Content-Type\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"); });",
+                  "pm.test(\"Список авторов и общее количество\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.authors).to.be.an(\"array\");",
+                  "    pm.expect(data.total).to.be.a(\"number\");",
+                  "    pm.expect(Number.isInteger(data.total)).to.equal(true);",
+                  "    pm.expect(data.total).to.be.at.least(data.authors.length);",
+                  "    data.authors.forEach(function (author) {",
+                  "        pm.expect(author.id).to.be.a(\"string\");",
+                  "        pm.expect(author.first_name).to.be.a(\"string\");",
+                  "        pm.expect(author.last_name).to.be.a(\"string\");",
+                  "    });",
+                  "});",
+                  "pm.test(\"Не более 20 авторов\", function () { pm.expect(pm.response.json().authors.length).to.be.at.most(20); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/authors",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "authors"
+                  ]
+                },
+                "description": "Параметры по умолчанию: limit=20, offset=0."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"authors\": [],\n  \"total\": 0\n}"
+            }
+          ]
+        },
+        {
+          "name": "Следующая страница",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/authors?limit=20&offset=20",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "authors"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Количество записей: 1–100, по умолчанию 20."
+                },
+                {
+                  "key": "offset",
+                  "value": "20",
+                  "description": "Количество пропущенных записей: ≥ 0, по умолчанию 0."
+                }
+              ]
+            },
+            "description": "Пропустить первые 20 записей и вернуть до 20 следующих. При offset за пределами списка authors будет [], total сохранит общее количество."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"JSON Content-Type\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"); });",
+                  "pm.test(\"Список авторов и общее количество\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.authors).to.be.an(\"array\");",
+                  "    pm.expect(data.total).to.be.a(\"number\");",
+                  "    pm.expect(Number.isInteger(data.total)).to.equal(true);",
+                  "    pm.expect(data.total).to.be.at.least(data.authors.length);",
+                  "    data.authors.forEach(function (author) {",
+                  "        pm.expect(author.id).to.be.a(\"string\");",
+                  "        pm.expect(author.first_name).to.be.a(\"string\");",
+                  "        pm.expect(author.last_name).to.be.a(\"string\");",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/authors?limit=20&offset=20",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "authors"
+                  ],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "20",
+                      "description": "Количество записей: 1–100, по умолчанию 20."
+                    },
+                    {
+                      "key": "offset",
+                      "value": "20",
+                      "description": "Количество пропущенных записей: ≥ 0, по умолчанию 0."
+                    }
+                  ]
+                },
+                "description": "Пропустить первые 20 записей и вернуть до 20 следующих. При offset за пределами списка authors будет [], total сохранит общее количество."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"authors\": [],\n  \"total\": 1\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 — Ошибки валидации",
+      "description": "Независимые проверки HTTP 400. Записи не создаются и не изменяются.",
+      "item": [
+        {
+          "name": "limit=0",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/authors?limit=0",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "authors"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "0",
+                  "description": "Количество записей: 1–100, по умолчанию 20."
+                }
+              ]
+            },
+            "description": "Проверка валидации пагинации; данные не изменяются."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"JSON Content-Type\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"); });",
+                  "pm.test(\"Ошибка API\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.error).to.equal(\"limit: must be between 1 and 100\");",
+                  "    pm.expect(data.message).to.equal(\"invalid pagination parameters\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "400 Bad Request",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/authors?limit=0",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "authors"
+                  ],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "0",
+                      "description": "Количество записей: 1–100, по умолчанию 20."
+                    }
+                  ]
+                },
+                "description": "Проверка валидации пагинации; данные не изменяются."
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"limit: must be between 1 and 100\",\n  \"message\": \"invalid pagination parameters\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "limit=101",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/authors?limit=101",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "authors"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "101",
+                  "description": "Количество записей: 1–100, по умолчанию 20."
+                }
+              ]
+            },
+            "description": "Проверка валидации пагинации; данные не изменяются."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"JSON Content-Type\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"); });",
+                  "pm.test(\"Ошибка API\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.error).to.equal(\"limit: must be between 1 and 100\");",
+                  "    pm.expect(data.message).to.equal(\"invalid pagination parameters\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "400 Bad Request",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/authors?limit=101",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "authors"
+                  ],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "101",
+                      "description": "Количество записей: 1–100, по умолчанию 20."
+                    }
+                  ]
+                },
+                "description": "Проверка валидации пагинации; данные не изменяются."
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"limit: must be between 1 and 100\",\n  \"message\": \"invalid pagination parameters\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "limit не число",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/authors?limit=abc",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "authors"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "abc",
+                  "description": "Количество записей: 1–100, по умолчанию 20."
+                }
+              ]
+            },
+            "description": "Проверка валидации пагинации; данные не изменяются."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"JSON Content-Type\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"); });",
+                  "pm.test(\"Ошибка API\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.error).to.equal(\"limit: must be an integer\");",
+                  "    pm.expect(data.message).to.equal(\"invalid pagination parameters\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "400 Bad Request",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/authors?limit=abc",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "authors"
+                  ],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "abc",
+                      "description": "Количество записей: 1–100, по умолчанию 20."
+                    }
+                  ]
+                },
+                "description": "Проверка валидации пагинации; данные не изменяются."
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"limit: must be an integer\",\n  \"message\": \"invalid pagination parameters\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "offset=-1",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/authors?offset=-1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "authors"
+              ],
+              "query": [
+                {
+                  "key": "offset",
+                  "value": "-1",
+                  "description": "Количество пропущенных записей: ≥ 0, по умолчанию 0."
+                }
+              ]
+            },
+            "description": "Проверка валидации пагинации; данные не изменяются."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"JSON Content-Type\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"); });",
+                  "pm.test(\"Ошибка API\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.error).to.equal(\"offset: must be greater than or equal to 0\");",
+                  "    pm.expect(data.message).to.equal(\"invalid pagination parameters\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "400 Bad Request",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/authors?offset=-1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "authors"
+                  ],
+                  "query": [
+                    {
+                      "key": "offset",
+                      "value": "-1",
+                      "description": "Количество пропущенных записей: ≥ 0, по умолчанию 0."
+                    }
+                  ]
+                },
+                "description": "Проверка валидации пагинации; данные не изменяются."
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"offset: must be greater than or equal to 0\",\n  \"message\": \"invalid pagination parameters\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "offset не число",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/authors?offset=abc",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "authors"
+              ],
+              "query": [
+                {
+                  "key": "offset",
+                  "value": "abc",
+                  "description": "Количество пропущенных записей: ≥ 0, по умолчанию 0."
+                }
+              ]
+            },
+            "description": "Проверка валидации пагинации; данные не изменяются."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"JSON Content-Type\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"); });",
+                  "pm.test(\"Ошибка API\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.error).to.equal(\"offset: must be an integer\");",
+                  "    pm.expect(data.message).to.equal(\"invalid pagination parameters\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "400 Bad Request",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/authors?offset=abc",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "authors"
+                  ],
+                  "query": [
+                    {
+                      "key": "offset",
+                      "value": "abc",
+                      "description": "Количество пропущенных записей: ≥ 0, по умолчанию 0."
+                    }
+                  ]
+                },
+                "description": "Проверка валидации пагинации; данные не изменяются."
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"offset: must be an integer\",\n  \"message\": \"invalid pagination parameters\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "GET — некорректный UUID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/authors/not-a-uuid",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "authors",
+                "not-a-uuid"
+              ]
+            },
+            "description": "ID должен быть UUID."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"JSON Content-Type\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"); });",
+                  "pm.test(\"Ошибка API\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.error).to.equal(\"invalid argument\");",
+                  "    pm.expect(data.message).to.equal(\"failed to get authorID path value\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "400 Bad Request",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/authors/not-a-uuid",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "authors",
+                    "not-a-uuid"
+                  ]
+                },
+                "description": "ID должен быть UUID."
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"invalid argument\",\n  \"message\": \"failed to get authorID path value\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST — обязательное имя",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/authors",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "authors"
+              ]
+            },
+            "description": "Невалидный запрос отклоняется до обращения к репозиторию.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"last_name\": \"Толстой\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"JSON Content-Type\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"); });",
+                  "pm.test(\"Ошибка API\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.error).to.equal(\"first_name: field is required\");",
+                  "    pm.expect(data.message).to.equal(\"request validation failed\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "400 Bad Request",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/authors",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "authors"
+                  ]
+                },
+                "description": "Невалидный запрос отклоняется до обращения к репозиторию.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"last_name\": \"Толстой\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"first_name: field is required\",\n  \"message\": \"request validation failed\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST — обязательная фамилия",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/authors",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "authors"
+              ]
+            },
+            "description": "Невалидный запрос отклоняется до обращения к репозиторию.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Лев\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"JSON Content-Type\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"); });",
+                  "pm.test(\"Ошибка API\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.error).to.equal(\"last_name: field is required\");",
+                  "    pm.expect(data.message).to.equal(\"request validation failed\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "400 Bad Request",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/authors",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "authors"
+                  ]
+                },
+                "description": "Невалидный запрос отклоняется до обращения к репозиторию.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"first_name\": \"Лев\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"last_name: field is required\",\n  \"message\": \"request validation failed\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST — имя длиннее 100 символов",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/authors",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "authors"
+              ]
+            },
+            "description": "Невалидный запрос отклоняется до обращения к репозиторию.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"ААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААА\",\n  \"last_name\": \"Толстой\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"JSON Content-Type\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"); });",
+                  "pm.test(\"Ошибка API\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.error).to.equal(\"first_name: must not exceed 100 characters\");",
+                  "    pm.expect(data.message).to.equal(\"request validation failed\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "400 Bad Request",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/authors",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "authors"
+                  ]
+                },
+                "description": "Невалидный запрос отклоняется до обращения к репозиторию.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"first_name\": \"ААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААА\",\n  \"last_name\": \"Толстой\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"first_name: must not exceed 100 characters\",\n  \"message\": \"request validation failed\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST — неизвестное поле",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/authors",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "authors"
+              ]
+            },
+            "description": "Невалидный запрос отклоняется до обращения к репозиторию.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Лев\",\n  \"last_name\": \"Толстой\",\n  \"unknown\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"JSON Content-Type\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"); });",
+                  "pm.test(\"Ошибка API\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.error).to.equal(\"invalid argument\");",
+                  "    pm.expect(data.message).to.equal(\"failed to decode and validate HTTP request\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "400 Bad Request",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/authors",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "authors"
+                  ]
+                },
+                "description": "Невалидный запрос отклоняется до обращения к репозиторию.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"first_name\": \"Лев\",\n  \"last_name\": \"Толстой\",\n  \"unknown\": true\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"invalid argument\",\n  \"message\": \"failed to decode and validate HTTP request\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST — некорректный JSON",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/authors",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "authors"
+              ]
+            },
+            "description": "Невалидный запрос отклоняется до обращения к репозиторию.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"first_name\":",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"JSON Content-Type\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"); });",
+                  "pm.test(\"Ошибка API\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.error).to.equal(\"invalid argument\");",
+                  "    pm.expect(data.message).to.equal(\"failed to decode and validate HTTP request\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "400 Bad Request",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/authors",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "authors"
+                  ]
+                },
+                "description": "Невалидный запрос отклоняется до обращения к репозиторию.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"first_name\":",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"invalid argument\",\n  \"message\": \"failed to decode and validate HTTP request\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST — массив вместо объекта",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/authors",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "authors"
+              ]
+            },
+            "description": "Невалидный запрос отклоняется до обращения к репозиторию.",
+            "body": {
+              "mode": "raw",
+              "raw": "[]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"JSON Content-Type\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"); });",
+                  "pm.test(\"Ошибка API\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.error).to.equal(\"invalid argument\");",
+                  "    pm.expect(data.message).to.equal(\"failed to decode and validate HTTP request\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "400 Bad Request",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/authors",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "authors"
+                  ]
+                },
+                "description": "Невалидный запрос отклоняется до обращения к репозиторию.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "[]",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"invalid argument\",\n  \"message\": \"failed to decode and validate HTTP request\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "PATCH — first_name: null",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/authors/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "authors",
+                "00000000-0000-0000-0000-000000000000"
+              ]
+            },
+            "description": "Валидация тела выполняется до поиска автора; существующий ID не требуется.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"JSON Content-Type\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"); });",
+                  "pm.test(\"Ошибка API\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.error).to.equal(\"first_name: must not be null\");",
+                  "    pm.expect(data.message).to.equal(\"request validation failed\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "400 Bad Request",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/authors/00000000-0000-0000-0000-000000000000",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "authors",
+                    "00000000-0000-0000-0000-000000000000"
+                  ]
+                },
+                "description": "Валидация тела выполняется до поиска автора; существующий ID не требуется.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"first_name\": null\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"first_name: must not be null\",\n  \"message\": \"request validation failed\"\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
