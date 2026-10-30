@@ -1,9 +1,61 @@
 version: '3'
 
-dotenv: [ '.env' ]
+silent: true
+
+dotenv:
+  - '.env'
+  - '.env.example'
 
 tasks:
+  list:
+    desc: Показать доступные команды
+    cmds:
+      - task --list
+
+  up:
+    desc: Поднять окружение полностью и дождаться готовности
+    cmds:
+      - docker compose up -d --wait
+
+  down:
+    desc: Остановить окружение полностью
+    cmds:
+      - docker compose down
+
+  postgres:up:
+    desc: Поднять только postgres и дождаться его готовности
+    cmds:
+      - docker compose up -d --wait library-postgres
+
+  postgres:down:
+    desc: Остановить postgres
+    cmds:
+      - docker compose stop library-postgres
+
+  migrate:create:
+    desc: Создать миграции
+    requires:
+      vars: [ NAME ]
+    env:
+      MIGRATION_NAME: '{{.NAME}}'
+    cmds:
+      - mkdir -p migrations
+      - docker compose run --rm --no-deps migrate create -ext sql -dir /migrations -seq "$MIGRATION_NAME"
+
+  migrate:up:
+    desc: Применить миграции базы данных
+    cmds:
+      - docker compose run --rm migrate -path /migrations -database postgres://library-postgres up
+
+  migrate:down:
+    desc: Откатить последнюю миграцию базы данных
+    cmds:
+      - docker compose run --rm migrate -path /migrations -database postgres://library-postgres down 1
+
   run:
     desc: Запустить приложение
+    deps: [ up ]
     cmds:
+      - go mod tidy
       - go run ./cmd/app
+

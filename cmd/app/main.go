@@ -2,8 +2,9 @@ package main
 
 import (
 	"context"
+	corepostgres "library/internal/core/repository/postgres"
 	"library/internal/core/transport/http/middleware"
-	authorsmemory "library/internal/modules/authors/repository/memory"
+	authorspostgres "library/internal/modules/authors/repository/postgres"
 	authorsservice "library/internal/modules/authors/service"
 	authorshttptransport "library/internal/modules/authors/transport/http"
 	stdlog "log"
@@ -30,7 +31,17 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	authorsRepository := authorsmemory.New()
+	pool, err := corepostgres.NewPool(ctx, cfg.Postgres)
+	if err != nil {
+		log.Error("failed to connect to postgres", "error", err)
+		cancel()
+		os.Exit(1)
+	}
+	defer pool.Close()
+
+	log.Info("postgres connected")
+
+	authorsRepository := authorspostgres.NewAuthorsRepository(pool)
 	authorsService := authorsservice.NewAuthorsService(authorsRepository)
 	authorsHTTPHandler := authorshttptransport.NewAuthorsHTTPHandler(authorsService)
 
@@ -50,6 +61,7 @@ func main() {
 
 	if err := httpServer.Run(ctx); err != nil {
 		log.Error("HTTP server run error", "error", err)
+		pool.Close()
 		cancel()
 		os.Exit(1)
 	}

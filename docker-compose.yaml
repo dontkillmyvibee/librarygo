@@ -1,0 +1,45 @@
+services:
+  library-postgres:
+    image: postgres:19rc1-bookworm
+    container_name: library-postgres-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    healthcheck:
+      test: [ "CMD-SHELL", 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"' ]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    ports:
+      - "${POSTGRES_HOST:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql
+    restart: always
+
+  migrate:
+    image: migrate/migrate:v4.20.1
+    container_name: postgres-migrate
+    profiles: [ "tools" ]
+    environment:
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+      PGPORT: "5432"
+      PGSSLMODE: ${POSTGRES_SSLMODE}
+    volumes:
+      - ./migrations:/migrations
+    command:
+      - "-path"
+      - "/migrations"
+      - "-database"
+      - "postgres://library-postgres"
+      - "up"
+    depends_on:
+      library-postgres:
+        condition: service_healthy
+    restart: "no"
+
+volumes:
+  pg_data:
