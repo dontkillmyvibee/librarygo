@@ -49,7 +49,7 @@ func (p *PatchAuthorRequest) Validate() error {
 			}
 		}
 
-		if err := validation.ValidateName(
+		if err := validation.ValidateStringWithLen(
 			"first_name",
 			*p.FirstName.Value,
 			100,
@@ -66,7 +66,7 @@ func (p *PatchAuthorRequest) Validate() error {
 			}
 		}
 
-		if err := validation.ValidateName(
+		if err := validation.ValidateStringWithLen(
 			"last_name",
 			*p.LastName.Value,
 			100,
@@ -76,7 +76,7 @@ func (p *PatchAuthorRequest) Validate() error {
 	}
 
 	if p.MiddleName.Set && p.MiddleName.Value != nil {
-		return validation.ValidateName(
+		return validation.ValidateStringWithLen(
 			"middle_name",
 			*p.MiddleName.Value,
 			100,
@@ -130,7 +130,7 @@ func (r *CreateAuthorRequest) Validate() error {
 		return err
 	}
 
-	if err := validation.ValidateName(
+	if err := validation.ValidateStringWithLen(
 		"first_name",
 		r.FirstName,
 		100,
@@ -142,7 +142,7 @@ func (r *CreateAuthorRequest) Validate() error {
 		return err
 	}
 
-	if err := validation.ValidateName(
+	if err := validation.ValidateStringWithLen(
 		"last_name",
 		r.LastName,
 		100,
@@ -151,7 +151,7 @@ func (r *CreateAuthorRequest) Validate() error {
 	}
 
 	if r.MiddleName != nil {
-		if err := validation.ValidateName(
+		if err := validation.ValidateStringWithLen(
 			"middle_name",
 			*r.MiddleName,
 			100,
