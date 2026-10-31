@@ -1,0 +1,3 @@
+package bookshttpdto
+
+type GetBookResponse CreateBookResponse

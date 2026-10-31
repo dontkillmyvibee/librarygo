@@ -6,13 +6,18 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
+	"uuid"
 )
 
-func ValidateName(fieldName, value string, maxNameLength int) error {
-	if utf8.RuneCountInString(value) > maxNameLength {
+func ValidateStringWithLen(
+	fieldName,
+	value string,
+	maxFieldLength int,
+) error {
+	if utf8.RuneCountInString(value) > maxFieldLength {
 		return &FieldError{
 			Field:   fieldName,
-			Message: fmt.Sprintf("must not exceed %d characters", maxNameLength),
+			Message: fmt.Sprintf("must not exceed %d characters", maxFieldLength),
 		}
 	}
 
@@ -43,6 +48,37 @@ func ValidateRequiredString(fieldName, value string) error {
 			Field:   fieldName,
 			Message: "field is required",
 		}
+	}
+
+	return nil
+}
+
+func ValidateUniqueUUIDsInSlice(fieldName string, value []uuid.UUID) error {
+	if len(value) == 0 {
+		return &FieldError{
+			Field:   fieldName,
+			Message: "must contains min 1 ID",
+		}
+	}
+
+	set := make(map[uuid.UUID]struct{}, len(value))
+
+	for _, value := range value {
+		if _, ok := set[value]; ok {
+			return &FieldError{
+				Field:   fieldName,
+				Message: "all values must be unique",
+			}
+		}
+
+		if value == uuid.Nil() {
+			return &FieldError{
+				Field:   fieldName,
+				Message: "uuid can`t be nil",
+			}
+		}
+
+		set[value] = struct{}{}
 	}
 
 	return nil

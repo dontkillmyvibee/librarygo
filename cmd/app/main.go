@@ -7,6 +7,9 @@ import (
 	authorspostgres "library/internal/modules/authors/repository/postgres"
 	authorsservice "library/internal/modules/authors/service"
 	authorshttptransport "library/internal/modules/authors/transport/http"
+	booksrepository "library/internal/modules/books/repository"
+	booksservice "library/internal/modules/books/service"
+	bookshttptransport "library/internal/modules/books/transport/http"
 	stdlog "log"
 	"os"
 	"os/signal"
@@ -45,6 +48,10 @@ func main() {
 	authorsService := authorsservice.NewAuthorsService(authorsRepository)
 	authorsHTTPHandler := authorshttptransport.NewAuthorsHTTPHandler(authorsService)
 
+	booksRepository := booksrepository.NewBooksRepository(pool)
+	booksService := booksservice.NewBooksService(booksRepository)
+	booksHTTPHandler := bookshttptransport.NewBooksHTTPHandler(booksService)
+
 	httpServer := httpserver.NewServer(
 		cfg.HTTP,
 		log,
@@ -56,6 +63,7 @@ func main() {
 
 	apiVersionRouterV1 := httpserver.NewApiVersionRouter(httpserver.ApiVersion1)
 	apiVersionRouterV1.RegisterRoutes(authorsHTTPHandler.Routes()...)
+	apiVersionRouterV1.RegisterRoutes(booksHTTPHandler.Routes()...)
 
 	httpServer.RegisterAPIRouters(apiVersionRouterV1)
 
